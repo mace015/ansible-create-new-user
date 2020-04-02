@@ -1,0 +1,29 @@
+---
+    - hosts: all
+      vars_prompt:
+      - name: ansible_password
+        prompt: "What is the password for the 'ansible' user?"
+      remote_user: ansible
+      become: yes
+      vars:
+        ansible_become_pass: "{{ ansible_password }}"
+      tasks:
+        - name: "Create a password for the {{ user }} user."
+          set_fact:
+            user_password: "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+        - name: "Create the {{ user }} user."
+          user:
+            name: "{{ user }}"
+            password: "{{ user_password | password_hash('sha512') }}"
+            shell: /bin/bash
+            groups: sudo
+            append: yes
+            update_password: on_create
+        - name: "Set authorized key for the {{ user }} user."
+          authorized_key:
+            user: "{{ user }}"
+            state: present
+            key: "{{ lookup('file', authorized_key) }}"
+        - name: "Print the password for the user {{ user }}."
+          debug:
+            msg: "The password for '{{ user }}' is {{ user_password }}"
